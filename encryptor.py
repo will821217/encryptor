@@ -34,7 +34,7 @@ class Encryptor():
         with open(encrypted_file, 'rb') as file:
             encrypted = file.read()
 
-        decrypted = f.decrypt(encrypted)
+        decrypted = file.decrypt(encrypted)
         with open(decrypted_file, 'ab') as file:
             file.write(decrypted)
 

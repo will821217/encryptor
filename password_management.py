@@ -25,100 +25,142 @@ def decrypt_for_dict(encryptor_string):
     return dict_ori
 
 def signup():
-    username = input("Enter username: ")
-    pwd = input('Enter password: ')
-    conf_pwd = input('Confirm password: ')
-    while conf_pwd != pwd:
-        print('Password is not same as above! \n')
-        conf_pwd = input('Confirm password: ')
-    if conf_pwd == pwd:
-        enc = conf_pwd.encode()
-        hash1 = hashlib.md5(enc).hexdigest()
-        with open('credentials.txt', 'a') as f:
-            f.write(
-                'Username: ' + username + ' ' + hash1 + ' no_encryptor \n')
-            #f.write(dict_user['Password_enc'] + '\n')
-        f.close()
+    with open(user_info_txt, 'a+') as file:
+        file.seek(0)
+        lines = file.readlines()
+        username_check = True
+        while username_check:
+            username = input("Enter username: ")
+            if lines:
+                for index, line in enumerate(lines):
+                    line_split = line.split(' ')
+                    if username == line_split[1]:
+                        print('This username has already used!!!')
+                        break
+                    elif index == len(lines)-1:
+                        username_check = False
+                        break
+            else:
+                break
+        
+        user_pwd = input('Enter password: ')
+        while True:
+            conf_pwd = input('Confirm password: ')
+            if conf_pwd != user_pwd:
+                print('Password is not the same as previous! \n')
+            else:
+                break
+
+        enc_user_pwd = user_pwd.encode()
+        md5_enc_user_pwd = hashlib.md5(enc_user_pwd).hexdigest()
+        file.write('Username: '+username+' '+md5_enc_user_pwd+' no_encryptor \n')
         print('You have registered successfully!')
-        # return dict_user
 
 def login():
     username = input('Enter username: ')
-    with open('credentials.txt', 'r') as f:
-        lines = f.readlines()
+    with open(user_info_txt, 'a+') as file:
+        file.seek(0)
+        lines = file.readlines()
         check_user = False
         for line in lines:
             line_split = line.split(' ')
-            stored_username = line_split[1]
-            if username == stored_username:
-                stored_pwd = line_split[2]
-                enc_pwd = line_split[3]
+            enc_dict_str = line_split[3]
+            if username == line_split[1]:
+                md5_enc_user_pwd = line_split[2]
                 check_user = True
                 break
 
         if check_user:
             count = 3
-            for i in range(3):
-                pwd = input('Enter password: ')
-                auth = pwd.encode()
-                auth_hash = hashlib.md5(auth).hexdigest()
-                # print(auth_hash)
-                if auth_hash == stored_pwd.strip():
+            while True:
+                login_pwd = input('Enter password: ')
+                enc_login_pwd = login_pwd.encode()
+                md5_enc_login_pwd = hashlib.md5(enc_login_pwd).hexdigest()
+                if md5_enc_login_pwd == md5_enc_user_pwd:
                     print('Logged in Successfully!')
                     print('===============================')
                     break
-                else:
+                elif count == 0:
+                    check_user = False
                     print('Logged in failed!')
-                    count = count - 1
-                    print('remain chances: ', count)
+                    print('===============================')
+                    break
+                else:
+                    print('Wrong password')
+                    print('Remain chances: ', count)
+                    count -= 1
         else:
-            print('User doesn\'t register! \n')
+            print('User doesn\'t register!')
             print('===============================')
-    f.close()
-    return username, enc_pwd, check_user
+    return username, enc_dict_str, check_user
 
 
-def add_password(username, enc_pwd):
+def add_password(username, enc_dict_str):
     print('========== Account ', username, '===========')
-    if enc_pwd != 'no_encryptor':
-        dict_user = decrypt_for_dict(enc_pwd)
+    if enc_dict_str != 'no_encryptor':
+        dict_user = decrypt_for_dict(enc_dict_str)
     else:
         dict_user = {}
+    
+    print('########## Before add ##############')
+    print(enc_dict_str)
+    print(dict_user)
+    print('####################################')
 
-    account = input('Enter Account name which you want to store: ')
-    do_overwrite = True
+    account = input('Enter Account name which you want to store in: ')
+    add_new_pwd = True
     if account in dict_user:
         while True:
             overwrite = input('Account is already exsist, if overwrite? [y/n]: ')
             if overwrite == 'y':
-                do_overwrite = True
                 break
             elif overwrite == 'n':
-                do_overwrite = False
+                add_new_pwd = False
                 break
             else:
                 print('wrong input! please input [y/n]')
                 continue
-    if do_overwrite:
-        passwd = input('Enter Account Password: ')
-        confirm_passwd = input('Enter Account Password again: ')
-        while confirm_passwd != passwd:
-            print('Password is not same as above! \n')
-            confirm_passwd = input('Enter Account Password again: ')
-        dict_user[account] = passwd
+    if add_new_pwd:
+        account_pwd = input('Enter Account Password: ')
+        while True:
+            confirm_pwd = input('Confirm Account Password: ')
+            if confirm_pwd != account_pwd:
+                print('Password is not the same as previous!')
+            else:
+                dict_user[account] = account_pwd
+                break
+        enc_dict_str_new = encrypt_for_dict(dict_user)
+        print('Add password of account: '+account+' in '+username+' successfully!')
 
-    enc_pwd_new = encrypt_for_dict(dict_user)
-    print('Add password of account: '+account+' in '+username+' successfully!')
+        print('########## After add ##############')
+        print(enc_dict_str_new)
+        print(dict_user)
+        print('####################################')
 
-    print('########## Before add ##############')
-    print(enc_pwd)
-    print(type(enc_pwd))
-    print('########## Before add ##############')
-    print('########## After add ##############')
-    print(dict_user)
-    print(enc_pwd_new)
-    print('########## After add ##############')
-    return enc_pwd_new
+        with open(user_info_txt, 'r+') as file:
+            lines = file.readlines()
+            file.seek(0)
+            for line in lines:
+                line_split = line.split(' ')
+                if username == line_split[1]:
+                    print('########## Old line ##############')
+                    print(line)
+                    print('########## Old line ##############')
+                    line_split[3] = str(enc_dict_str_new.decode())
+                    line_new = ' '.join(line_split)
+                    print('########## New line ##############')
+                    print(line_new)
+                    print('########## New line ##############')
+                    file.write(line_new)
+                    print('!!!!! check !!!!!')
+                else:
+                    file.write(line)
+                    print('@@@@@ check @@@@')
+            file.truncate()
+        print('########## After renew ##############')
+    else:
+        print('No new account and password are added!')
+    return username, enc_dict_str_new
 
 def renew_enc_pwd(username, enc_pwd_new):
     print('########## Before renew ##############')
@@ -145,14 +187,16 @@ def renew_enc_pwd(username, enc_pwd_new):
                 f.write(line)
                 print('@@@@@ check @@@@')
         f.truncate()
-    f.close()
     print('########## After renew ##############')
     return 
 
 
-def view_password(username, enc_pwd):
-    if enc_pwd != 'no_encryptor':
-        dict_user = decrypt_for_dict(enc_pwd)
+def view_password(username, enc_dict_str):
+    if enc_dict_str != 'no_encryptor':
+        #####
+        ### byte(enc_dict_str)
+        #####
+        dict_user = decrypt_for_dict(enc_dict_str)
         print('##########')
         print(username)
         count = 0
@@ -166,38 +210,42 @@ def view_password(username, enc_pwd):
     else:
         print('User', username, 'doesn\'t store any account!')
 
-############### need change for switching account
-while True:
-    print("********** Password manage System **********")
-    print("1.Signup")
-    print("2.Login")
-    print("3.Exit")
-    ch = input("Enter your choice: ")
-    if ch == str(1):
-        signup()
-    elif ch == str(2):
-        if path.exists('credentials.txt') and os.path.getsize ('credentials.txt') > 0 :
-            username, enc_pwd, check_user = login()
-            if check_user:
-                while True:
-                    print("1.Store account password")
-                    print("2.View account password")
-                    print("3.Exit")
-                    ch = input("Enter your choice: ")
-                    if ch == str(1):
-                        enc_pwd = add_password(username, enc_pwd)
-                        renew_enc_pwd(username, enc_pwd)
-                        continue
-                    elif ch == str(2):
-                        view_password(username, enc_pwd)
-                        continue
-                    elif ch == str(3):
-                        break
-                    else:
-                        print("Wrong Choice! Please Enter correct one!")
+if __name__ == '__main__':
+    user_info_txt = 'user_encryption.txt'
+    while True:
+        print("********** Password manage System **********")
+        print("1.Signup")
+        print("2.Login")
+        print("3.Exit")
+        choice = input("Enter your choice: ")
+        if choice == str(1):
+            signup()
+        elif choice == str(2):
+            if path.exists(user_info_txt) and os.path.getsize (user_info_txt) > 0 :
+                username, enc_dict_str, check_user = login()
+                if check_user:
+                    while True:
+                        print('Welcome, '+username+'. How may I help you?')
+                        print("1.Store account password")
+                        print("2.View account password")
+                        print("3.Exit")
+                        choice = input("Enter your choice: ")
+                        if choice == str(1):
+                            username, enc_dict_str  = add_password(username, enc_dict_str)
+                            #enc_pwd = add_password(username, enc_pwd)
+                            #renew_enc_pwd(username, enc_pwd)
+                            continue
+                        elif choice == str(2):
+                            view_password(username, enc_dict_str)
+                            continue
+                        elif choice == str(3):
+                            break
+                        else:
+                            print("Wrong Choice! Please Enter correct one!")
+            else:
+                print('No existing user!')
+        elif choice == str(3):
+            break
         else:
-            print('No existing user!')
-    elif ch == str(3):
-        break
-    else:
-        print("Wrong Choice! Please Enter correct one!")
+            print("Invalid choice number! Please enter 1 or 2 or 3 !")
+
